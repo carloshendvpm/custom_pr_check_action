@@ -1,13 +1,45 @@
 const core = require('@actions/core');
 const github = require('@actions/github');
+
 async function run() {
   try {
     const token = core.getInput('github-token');
     const octokit = github.getOctokit(token);
-    const pr = github.context.payload.pull_request;
+    
+    let pr;
+    
+    if (github.context.payload.pull_request) {
+      pr = github.context.payload.pull_request;
+      core.info(`Processando evento de pull request #${pr.number}`);
+    } 
+    else if (github.context.eventName === 'push') {
+      core.info('Evento de push detectado, procurando PRs associados...');
+      
+      const sha = github.context.sha;
+      
+      const { data: pullRequests } = await octokit.rest.pulls.list({
+        owner: github.context.repo.owner,
+        repo: github.context.repo.repo,
+        state: 'open'
+      });
+      for (const pullRequest of pullRequests) {
+        const { data: commits } = await octokit.rest.pulls.listCommits({
+          owner: github.context.repo.owner,
+          repo: github.context.repo.repo,
+          pull_number: pullRequest.number
+        });
+        
+        if (commits.some(commit => commit.sha === sha)) {
+          pr = pullRequest;
+          core.info(`Encontrado PR #${pr.number} relacionado ao commit ${sha}`);
+          break;
+        }
+      }
+    }
 
+    // Se não encontrar um PR, encerrar
     if (!pr) {
-      core.info("Este workflow deve ser executado em eventos de pull request.");
+      core.info("Nenhum PR encontrado para verificar.");
       return;
     }
 

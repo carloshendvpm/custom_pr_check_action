@@ -23,4 +23,6 @@ jobs:
       - name: Verificar PR
         uses: ./
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }} 
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          custom-token: ${{ secrets.CI_TOKEN }}
+          comment-header: '🚨 Verificação de PR'

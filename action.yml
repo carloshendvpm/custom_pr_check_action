@@ -7,6 +7,13 @@ inputs:
     description: Token de acesso ao GitHub
     required: true
     default: ${{ github.token }}
+  custom-token:
+    description: Token de acesso personalizado para comentar como outro usuário
+    required: false
+  comment-header:
+    description: Cabeçalho personalizado para o comentário
+    required: false
+    default: '🤖 PR Check Bot'
 
 runs:
   using: node20

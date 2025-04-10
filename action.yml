@@ -10,15 +10,11 @@ inputs:
   custom-token:
     description: Token de acesso personalizado para comentar como outro usuário
     required: false
-  comment-header:
-    description: Cabeçalho personalizado para o comentário
-    required: false
-    default: '🤖 PR Check Bot'
   language:
     description: Idioma da mensagem (pt ou en)
     required: false
     default: 'pt'
-
+    
 runs:
   using: node20
   main: dist/index.js

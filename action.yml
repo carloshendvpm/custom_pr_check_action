@@ -14,6 +14,10 @@ inputs:
     description: Cabeçalho personalizado para o comentário
     required: false
     default: '🤖 PR Check Bot'
+  language:
+    description: Idioma da mensagem (pt ou en)
+    required: false
+    default: 'pt'
 
 runs:
   using: node20

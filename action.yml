@@ -1,11 +1,17 @@
 name: Check de PR`s(Milestones, Labels, Assignes)
 description: Verifica se um PR tem milestone, labels e assignees definidos.
 author: carloshendvpm
-inputs: 
+
+inputs:
   github-token:
-    description: Token do Github
+    description: Token de acesso ao GitHub
     required: true
     default: ${{ github.token }}
+
 runs:
   using: node20
-  main: index.js
+  main: dist/index.js
+
+branding:
+  icon: check-circle
+  color: green

@@ -25,4 +25,4 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           custom-token: ${{ secrets.CI_TOKEN }}
-          comment-header: '🚨 Verificação de PR'
+          language: 'en'

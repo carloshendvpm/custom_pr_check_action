@@ -31831,25 +31831,28 @@ const github = __nccwpck_require__(4853);
 
 async function run() {
   try {
-    core.info('Iniciando verificação de PR...');
+    core.info('Starting PR check...');
     const token = core.getInput('github-token');
-    core.info('Token obtido, inicializando octokit...');
-    const octokit = github.getOctokit(token);
+    const customToken = core.getInput('custom-token') || token;
+    const commentHeader = core.getInput('comment-header');
     
-    core.info(`Contexto do evento: ${github.context.eventName}`);
-    core.info(`Repositório: ${github.context.repo.owner}/${github.context.repo.repo}`);
+    core.info('Token obtained, initializing octokit...');
+    const octokit = github.getOctokit(token);
+    const commentOctokit = customToken !== token ? github.getOctokit(customToken) : octokit;    
+    core.info(`Event context: ${github.context.eventName}`);
+    core.info(`Repository: ${github.context.repo.owner}/${github.context.repo.repo}`);
     
     let pr;
     
     if (github.context.payload.pull_request) {
       pr = github.context.payload.pull_request;
-      core.info(`Processando evento de pull request #${pr.number}`);
+      core.info(`Processing pull request #${pr.number}`);
     } 
     else if (github.context.eventName === 'push') {
-      core.info('Evento de push detectado, procurando PRs associados...');
+      core.info('Push event detected, searching for associated PRs...');
       
       const sha = github.context.sha;
-      core.info(`SHA do commit atual: ${sha}`);
+      core.info(`Current commit SHA: ${sha}`);
       
       try {
         const { data: pullRequests } = await octokit.rest.pulls.list({
@@ -31858,10 +31861,10 @@ async function run() {
           state: 'open'
         });
         
-        core.info(`Encontrados ${pullRequests.length} PRs abertos no repositório`);
+        core.info(`Found ${pullRequests.length} open PRs in the repository`);
         
         for (const pullRequest of pullRequests) {
-          core.info(`Verificando commits do PR #${pullRequest.number}...`);
+          core.info(`Checking commits of PR #${pullRequest.number}...`);
           try {
             const { data: commits } = await octokit.rest.pulls.listCommits({
               owner: github.context.repo.owner,
@@ -31869,15 +31872,15 @@ async function run() {
               pull_number: pullRequest.number
             });
             
-            core.info(`PR #${pullRequest.number} tem ${commits.length} commits`);
+            core.info(`PR #${pullRequest.number} has ${commits.length} commits`);
             
             if (commits.some(commit => commit.sha === sha)) {
               pr = pullRequest;
-              core.info(`Encontrado PR #${pr.number} relacionado ao commit ${sha}`);
+              core.info(`Found PR #${pr.number} related to commit ${sha}`);
               break;
             }
           } catch (commitError) {
-            core.warning(`Erro ao buscar commits do PR #${pullRequest.number}: ${commitError.message}`);
+            core.warning(`Error searching commits for PR #${pullRequest.number}: ${commitError.message}`);
           }
         }
       } catch (prListError) {
@@ -31885,69 +31888,70 @@ async function run() {
       }
     }
 
-    // Se não encontrar um PR, encerrar
     if (!pr) {
-      core.info("Nenhum PR encontrado para verificar.");
+      core.info("No PR found to verify.");
       return;
     }
 
-    core.info('Verificando campos obrigatórios do PR...');
+    core.info('Verifying required PR fields...');
     const missingFields = [];
 
     if (!pr.milestone) {
       missingFields.push('🔹 **Milestone**');
-      core.info('Milestone não encontrada');
+      core.info('Milestone not found');
     }
 
     if (!pr.assignees || pr.assignees.length === 0) {
       missingFields.push('👤 **Assignees**');
-      core.info('Assignees não encontrados');
+      core.info('Assignees not found');
     }
 
     if (!pr.labels || pr.labels.length === 0) {
       missingFields.push('🏷️ **Labels**');
-      core.info('Labels não encontradas');
+      core.info('Labels not found');
     }
 
     if (missingFields.length > 0) {
       const message = `
-⚠️ Neste PR estão faltando os seguintes campos obrigatórios:
+### ${commentHeader}
+
+⚠️ The following required fields are missing in this PR:
 
 ${missingFields.join('\n')}
 
-Por favor, adicione-os para manter a organização do projeto.
+Please add them to keep the project organized.
 `;
       
-      core.info('Campos obrigatórios ausentes, tentando adicionar comentário...');
+      core.info('Missing required fields, trying to add comment...');
       
       try {
-        core.info(`Criando comentário no PR #${pr.number}`);
-        core.info(`Dono do repo: ${github.context.repo.owner}`);
-        core.info(`Nome do repo: ${github.context.repo.repo}`);
+        core.info(`Creating comment on PR #${pr.number}`);
+        core.info(`Repository owner: ${github.context.repo.owner}`);
+        core.info(`Repository name: ${github.context.repo.repo}`);
         
-        await octokit.rest.issues.createComment({
+        await commentOctokit.rest.issues.createComment({
           owner: github.context.repo.owner,
           repo: github.context.repo.repo,
           issue_number: pr.number,
           body: message
         });
         
-        core.info('Comentário adicionado com sucesso');
-        core.setFailed("PR está incompleto. Veja o comentário adicionado.");
+        core.info('Comment added successfully');
+        core.setFailed("PR is incomplete. See the added comment.");
       } catch (commentError) {
-        core.error(`Erro ao criar comentário: ${commentError.message}`);
+        core.error(`Error creating comment: ${commentError.message}`);
         if (commentError.message.includes('Resource not accessible by integration')) {
-          core.error('ERRO DE PERMISSÃO: Verifique se o token tem permissão para escrever em issues/pull requests');
-          core.error('Adicione "permissions: { issues: write, pull-requests: write }" ao seu arquivo de workflow');
+          core.error('PERMISSION ERROR: Check if the token has permission to write in issues/pull requests');
+          core.error('Add "permissions: { issues: write, pull-requests: write }" to your workflow file');
         }
-        core.setFailed(`Não foi possível adicionar comentário: ${commentError.message}`);
+        core.setFailed(`Unable to add comment: ${commentError.message}`);
       }
     } else {
-      core.info(`✅ PR #${pr.number} está com todos os campos obrigatórios preenchidos.`);
+      core.info(`✅ PR #${pr.number} has all required fields filled.`);
     }
 
   } catch (error) {
-    core.error(`Erro na execução da action: ${error.message}`);
+    core.error(`Error executing action: ${error.message}`);
     if (error.stack) {
       core.debug(`Stack trace: ${error.stack}`);
     }

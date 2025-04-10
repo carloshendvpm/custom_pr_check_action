@@ -1,6 +1,6 @@
 const core = require('@actions/core');
 const github = require('@actions/github');
-const { messages } = require('../lib/constants');
+const { MESSAGES, generatePRCommentMessage } = require('../lib/constants');
 
 
 async function run() {
@@ -9,7 +9,7 @@ async function run() {
     const token = core.getInput('github-token');
     const customToken = core.getInput('custom-token') || token;
     const language = core.getInput('language') || 'pt';
-    const msgTexts = messages[language] || messages.pt;
+    const msgTexts = MESSAGES[language] || MESSAGES.pt;
     
     core.info('Token obtained, initializing octokit...');
     const octokit = github.getOctokit(token);
@@ -87,28 +87,7 @@ async function run() {
     }
 
     if (missingFields.length > 0) {
-      const message = `
-## ⚠️ ${msgTexts.title}
-
-${msgTexts.intro}
-
-${missingFields.join('\n')}
-
----
-
-### 📝 ${msgTexts.importance}
-- **Milestones** ${msgTexts.milestoneImportance}
-- **Assignees** ${msgTexts.assigneesImportance}
-- **Labels** ${msgTexts.labelsImportance}
-
-### 🚀 ${msgTexts.howToResolve}
-1. ${msgTexts.step1}
-2. ${msgTexts.step2}
-3. ${msgTexts.step3}
-
----
-_${msgTexts.footer}_
-`;
+      const message = generatePRCommentMessage(msgTexts, missingFields);
       
       core.info('Missing required fields, trying to add comment...');
       

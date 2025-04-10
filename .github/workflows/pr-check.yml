@@ -26,4 +26,3 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           custom-token: ${{ secrets.CI_TOKEN }}
           language: 'en'
-          comment-header: '🔍 Revisão de Qualidade'
